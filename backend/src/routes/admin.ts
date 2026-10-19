@@ -16,6 +16,7 @@ import {
   updateReportSchema,
   patchSuspendUserSchema,
   GetJobsAdminQuery,
+  UpdateReportInput,
 } from "../schemas/admin";
 import { z, ZodError } from "zod";
 import { logAdminAction } from "../utils/auditLogger";
@@ -1095,9 +1096,6 @@ router.post(
   },
 );
 
-const REPORT_STATUSES = ["PENDING", "REVIEWED", "DISMISSED"] as const;
-
-
 /**
  * GET /api/admin/reports
  * List all reports, filterable by status and targetType.
@@ -1158,11 +1156,7 @@ router.patch(
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const { status, suspend, suspendReason } = req.body as {
-        status: (typeof REPORT_STATUSES)[number];
-        suspend?: boolean;
-        suspendReason?: string;
-      };
+      const { status, suspend, suspendReason } = req.body as UpdateReportInput;
 
       const report = await prisma.report.findUnique({ where: { id } });
       if (!report) {

@@ -19,7 +19,7 @@ interface UseFocusTrapOptions {
 }
 
 export function useFocusTrap(
-  containerRef: RefObject | null>,
+  containerRef: RefObject<HTMLElement | null>,
   { open, onClose, initialFocusRef }: UseFocusTrapOptions,
 ) {
   const previousFocusRef = useRef<HTMLElement | null>(null);
