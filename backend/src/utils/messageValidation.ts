@@ -42,5 +42,12 @@ export async function validateMessageSendAuthorization({
         "Not authorized to send messages for this job.",
       );
     }
+
+    if (job.clientId !== receiverId && job.freelancerId !== receiverId) {
+      throw new MessageValidationError(
+        403,
+        "Not authorized to send messages for this job.",
+      );
+    }
   }
 }

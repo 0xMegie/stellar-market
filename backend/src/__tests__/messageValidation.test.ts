@@ -142,7 +142,7 @@ describe("validateMessageSendAuthorization — job (#1436)", () => {
   it("looks the job up by id", async () => {
     await validateMessageSendAuthorization({
       senderId: CLIENT_ID,
-      receiverId: RECEIVER_ID,
+      receiverId: FREELANCER_ID,
       jobId: JOB_ID,
       prismaClient,
     });
@@ -182,7 +182,7 @@ describe("validateMessageSendAuthorization — sender must be a job participant 
   it("throws 403 when the sender is neither client nor freelancer", async () => {
     const promise = validateMessageSendAuthorization({
       senderId: OUTSIDER_ID,
-      receiverId: RECEIVER_ID,
+      receiverId: FREELANCER_ID,
       jobId: JOB_ID,
       prismaClient,
     });
@@ -198,7 +198,7 @@ describe("validateMessageSendAuthorization — sender must be a job participant 
     await expect(
       validateMessageSendAuthorization({
         senderId: CLIENT_ID,
-        receiverId: RECEIVER_ID,
+        receiverId: FREELANCER_ID,
         jobId: JOB_ID,
         prismaClient,
       }),
@@ -209,7 +209,7 @@ describe("validateMessageSendAuthorization — sender must be a job participant 
     await expect(
       validateMessageSendAuthorization({
         senderId: FREELANCER_ID,
-        receiverId: RECEIVER_ID,
+        receiverId: CLIENT_ID,
         jobId: JOB_ID,
         prismaClient,
       }),
@@ -224,7 +224,7 @@ describe("validateMessageSendAuthorization — sender must be a job participant 
     await expect(
       validateMessageSendAuthorization({
         senderId: OUTSIDER_ID,
-        receiverId: RECEIVER_ID,
+        receiverId: CLIENT_ID,
         jobId: JOB_ID,
         prismaClient,
       }),
@@ -232,23 +232,13 @@ describe("validateMessageSendAuthorization — sender must be a job participant 
   });
 
   it("rejects an unassigned job whose freelancer slot is still null", async () => {
-    // A job created but not yet accepted has no freelancer. Only the client may
-    // message on it — the absent freelancer must not become a wildcard match.
+    // A job created but not yet accepted has no freelancer.
     prisma.job.findUnique.mockResolvedValue({ id: JOB_ID, clientId: CLIENT_ID, freelancerId: null });
 
     await expect(
       validateMessageSendAuthorization({
-        senderId: CLIENT_ID,
-        receiverId: RECEIVER_ID,
-        jobId: JOB_ID,
-        prismaClient,
-      }),
-    ).resolves.toBeUndefined();
-
-    await expect(
-      validateMessageSendAuthorization({
         senderId: OUTSIDER_ID,
-        receiverId: RECEIVER_ID,
+        receiverId: CLIENT_ID,
         jobId: JOB_ID,
         prismaClient,
       }),
@@ -262,11 +252,52 @@ describe("validateMessageSendAuthorization — sender must be a job participant 
     await expect(
       validateMessageSendAuthorization({
         senderId: `${CLIENT_ID}-staging`,
-        receiverId: RECEIVER_ID,
+        receiverId: FREELANCER_ID,
         jobId: JOB_ID,
         prismaClient,
       }),
     ).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+// ─── Receiver participant check (#1642) ───────────────────────────────────────
+
+describe("validateMessageSendAuthorization — receiver must be a job participant (#1642)", () => {
+  it("rejects when the receiver is neither client nor freelancer on the job", async () => {
+    const promise = validateMessageSendAuthorization({
+      senderId: CLIENT_ID,
+      receiverId: OUTSIDER_ID,
+      jobId: JOB_ID,
+      prismaClient,
+    });
+
+    await expect(promise).rejects.toBeInstanceOf(MessageValidationError);
+    await expect(promise).rejects.toMatchObject({
+      status: 403,
+      message: "Not authorized to send messages for this job.",
+    });
+  });
+
+  it("allows client sending to freelancer", async () => {
+    await expect(
+      validateMessageSendAuthorization({
+        senderId: CLIENT_ID,
+        receiverId: FREELANCER_ID,
+        jobId: JOB_ID,
+        prismaClient,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("allows freelancer sending to client", async () => {
+    await expect(
+      validateMessageSendAuthorization({
+        senderId: FREELANCER_ID,
+        receiverId: CLIENT_ID,
+        jobId: JOB_ID,
+        prismaClient,
+      }),
+    ).resolves.toBeUndefined();
   });
 });
 
