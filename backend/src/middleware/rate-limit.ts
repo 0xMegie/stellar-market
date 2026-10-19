@@ -15,7 +15,11 @@ const sendTooManyRequests = (req: RateLimitedRequest, res: Response): void => {
     : Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
 
   res.setHeader("Retry-After", retryAfterSeconds.toString());
-  res.status(429).json({ error: "Too many requests" });
+  res.status(429).json({
+    code: "RATE_LIMITED",
+    error: "Too many requests",
+    requestId: req.requestId,
+  });
 };
 
 const sendTooManyWrites = (req: RateLimitedRequest, res: Response): void => {
@@ -25,7 +29,11 @@ const sendTooManyWrites = (req: RateLimitedRequest, res: Response): void => {
     : Math.ceil(WRITE_RATE_LIMIT_WINDOW_MS / 1000);
 
   res.setHeader("Retry-After", retryAfterSeconds.toString());
-  res.status(429).json({ error: "Too many write requests" });
+  res.status(429).json({
+    code: "RATE_LIMITED",
+    error: "Too many write requests",
+    requestId: req.requestId,
+  });
 };
 
 // Redis store configuration
@@ -55,10 +63,6 @@ export const globalRateLimiter = rateLimit({
   store: globalStore,
   passOnStoreError: true,
   handler: sendTooManyRequests,
-  skip: (req: Request) => {
-    // Whitelist health-check paths
-    return req.path === "/health" || req.path === "/health/db";
-  },
 });
 
 export const loginRateLimiter = rateLimit({
