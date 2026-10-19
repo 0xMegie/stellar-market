@@ -35,7 +35,9 @@ export function requestDurationMiddleware(
   const end = httpRequestDuration.startTimer();
 
   res.on("finish", () => {
-    const route = (req.route?.path || req.path).replace(/\/api/, "");
+    const route = req.route?.path
+      ? req.route.path.replace(/\/api/, "")
+      : "unmatched";
     end({ method: req.method, route, status_code: res.statusCode });
   });
 
