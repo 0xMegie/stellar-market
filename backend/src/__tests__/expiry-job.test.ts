@@ -117,4 +117,30 @@ describe("expireJobs", () => {
       expect.objectContaining({ userId: "c-b", type: NotificationType.JOB_EXPIRED }),
     );
   });
+
+  it("keeps processing other OPEN jobs when notification sending throws for one (#1640)", async () => {
+    mockJobFindMany
+      .mockResolvedValueOnce([
+        { id: "open-job-1", title: "Job 1", clientId: "client-1" },
+        { id: "open-job-2", title: "Job 2", clientId: "client-2" },
+      ])
+      .mockResolvedValueOnce([]);
+
+    mockSendNotification
+      .mockRejectedValueOnce(new Error("notification failure"))
+      .mockResolvedValueOnce(null);
+
+    await expireJobs();
+
+    expect(mockJobUpdate).toHaveBeenCalledWith({
+      where: { id: "open-job-1" },
+      data: { status: "EXPIRED" },
+    });
+    expect(mockJobUpdate).toHaveBeenCalledWith({
+      where: { id: "open-job-2" },
+      data: { status: "EXPIRED" },
+    });
+    expect(mockJobUpdate).toHaveBeenCalledTimes(2);
+    expect(mockSendNotification).toHaveBeenCalledTimes(2);
+  });
 });

@@ -46,19 +46,23 @@ async function expireJobs(): Promise<void> {
     });
 
     for (const job of openExpired) {
-      await prisma.job.update({
-        where: { id: job.id },
-        data: { status: "EXPIRED" },
-      });
+      try {
+        await prisma.job.update({
+          where: { id: job.id },
+          data: { status: "EXPIRED" },
+        });
 
-      await NotificationService.sendNotification({
-        userId: job.clientId,
-        type: NotificationType.JOB_EXPIRED,
-        title: "Job Expired",
-        message: `Your job "${job.title}" has expired without being funded and has been closed.`,
-      });
+        await NotificationService.sendNotification({
+          userId: job.clientId,
+          type: NotificationType.JOB_EXPIRED,
+          title: "Job Expired",
+          message: `Your job "${job.title}" has expired without being funded and has been closed.`,
+        });
 
-      logger.info({ jobId: job.id }, "[ExpiryJob] Marked OPEN job as EXPIRED");
+        logger.info({ jobId: job.id }, "[ExpiryJob] Marked OPEN job as EXPIRED");
+      } catch (err) {
+        logger.error({ err, jobId: job.id }, "[ExpiryJob] Failed to expire open job");
+      }
     }
 
     const fundedExpired = await prisma.job.findMany({
